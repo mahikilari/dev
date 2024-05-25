@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openldap-secret
+  namespace: devops
+type: Opaque
+stringData:
+  LDAP_ADMIN_PASSWORD: admin_pass
+  LDAP_CONFIG_PASSWORD: config_pass
+  LDAP_READONLY_USER_PASSWORD: ro_pass
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openldap
+  template:
+    metadata:
+      labels:
+        app: openldap
+    spec:
+      containers:
+      - name: openldap
+        image: osixia/openldap:latest
+        env:
+        - name: LDAP_ORGANISATION
+          value: alibnr
+        - name: LDAP_DOMAIN
+          value: alibnr.com
+        - name: LDAP_ADMIN_USERNAME
+          value: admin
+        - name: LDAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openldap-secret
+              key: LDAP_ADMIN_PASSWORD
+        - name: LDAP_CONFIG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openldap-secret
+              key: LDAP_CONFIG_PASSWORD
+        - name: LDAP_BASE_DN
+          value: dc=alibnr,dc=com
+        - name: LDAP_TLS_CRT_FILENAME
+          value: server.crt
+        - name: LDAP_TLS_KEY_FILENAME
+          value: server.key
+        - name: LDAP_TLS_CA_CRT_FILENAME
+          value: alibnr.com.ca.crt
+        - name: LDAP_READONLY_USER
+          value: "true"
+        - name: LDAP_READONLY_USER_USERNAME
+          value: user-ro
+        - name: LDAP_READONLY_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openldap-secret
+              key: LDAP_READONLY_USER_PASSWORD
+        ports:
+        - containerPort: 389
+        - containerPort: 636
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+  namespace: devops
+spec:
+  selector:
+    app: openldap
+  ports:
+  - name: ldap
+    port: 389
+    targetPort: 389
+  - name: ldaps
+    port: 636
+    targetPort: 636
+  type: LoadBalancer
