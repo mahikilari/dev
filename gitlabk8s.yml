@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+      - name: gitlab
+        image: gitlab/gitlab-ce:latest
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 22
+        env:
+        - name: GITLAB_OMNIBUS_CONFIG
+          value: |
+            external_url 'http://<external-url>'
+            gitlab_rails['ldap_enabled'] = true
+            gitlab_rails['ldap_servers'] = YAML.load <<-EOS
+              main:
+                label: 'LDAP'
+                host: 'openldap.devops.svc.cluster.local'
+                port: 389
+                uid: 'uid'
+                bind_dn: 'cn=admin,dc=alibnr,dc=com'
+                password: 'admin_pass'
+                encryption: 'plain'
+                verify_certificates: false
+                smartcard_auth: false
+                active_directory: false
+                allow_username_or_email_login: true
+                lowercase_usernames: false
+                block_auto_created_users: false
+                base: 'dc=alibnr,dc=com'
+                user_filter: ''
+                group_base: ''
+                admin_group: ''
+                sync_ssh_keys: false
+            EOS
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab
+  namespace: devops
+spec:
+  selector:
+    app: gitlab
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
+  - name: ssh
+    port: 22
+    targetPort: 22
+  type: LoadBalancer
