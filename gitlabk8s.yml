@@ -23,7 +23,7 @@ spec:
         env:
         - name: GITLAB_OMNIBUS_CONFIG
           value: |
-            external_url 'http://<external-url>'
+            external_url 'http://<external-url>' //to update ldap external ip
             gitlab_rails['ldap_enabled'] = true
             gitlab_rails['ldap_servers'] = YAML.load <<-EOS
               main:
